@@ -11,22 +11,21 @@ import 'document_layout.dart';
 /// In particular, the context contains the [DocumentEditor],
 /// [DocumentComposer], and [DocumentLayout].
 /// In addition, [commonOps] are available for directly applying common, complex
-/// changes to the document using the artifacts.
+/// changes to the document using the artifacts and a [scrollController] can be
+/// used to make changes to the scroll position in the viewport.
 class EditContext {
   /// Creates an edit context that makes up a collection of core artifacts for
   /// editing a document.
   ///
   /// The [documentLayout] is passed as a [getDocumentLayout] callback that
   /// should return the current layout as it might change.
-  EditContext(
-      {required this.editor,
-      required DocumentLayout Function() getDocumentLayout,
-      required this.composer,
-      required this.commonOps,
-      this.scrollController})
-      : _getDocumentLayout = getDocumentLayout;
-
-  final ScrollController? scrollController;
+  EditContext({
+    required this.editor,
+    required DocumentLayout Function() getDocumentLayout,
+    required this.composer,
+    required this.commonOps,
+    this.scrollController,
+  }) : _getDocumentLayout = getDocumentLayout;
 
   /// The editor of the [Document] that allows executing commands that alter the
   /// structure of the document.
@@ -45,4 +44,8 @@ class EditContext {
   /// Common operations that can be executed to apply common, complex changes to
   /// the document.
   final CommonEditorOperations commonOps;
+
+  ///The scroll position state of the viewport, used to apply position changes to
+  ///the display.
+  final ScrollController? scrollController;
 }
