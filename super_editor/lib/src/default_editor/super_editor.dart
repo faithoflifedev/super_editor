@@ -136,10 +136,10 @@ class SuperEditor extends StatefulWidget {
     this.inputSource = DocumentInputSource.keyboard,
     this.gestureMode = DocumentGestureMode.mouse,
     List<DocumentKeyboardAction>? keyboardActions,
+    this.softwareKeyboardHandler,
     this.androidToolbarBuilder,
     this.iOSToolbarBuilder,
     this.createOverlayControlsClipper,
-    this.softwareKeyboardHandler,
     this.debugPaint = const DebugPaintConfig(),
     this.autofocus = false,
   })  : stylesheet = stylesheet ?? defaultStylesheet,
@@ -245,10 +245,11 @@ class SuperEditor extends StatefulWidget {
   final DebugPaintConfig debugPaint;
 
   @override
-  _SuperEditorState createState() => _SuperEditorState();
+  SuperEditorState createState() => SuperEditorState();
 }
 
-class _SuperEditorState extends State<SuperEditor> {
+@visibleForTesting
+class SuperEditorState extends State<SuperEditor> {
   // GlobalKey used to access the [DocumentLayoutState] to figure
   // out where in the document the user taps or drags.
   late GlobalKey _docLayoutKey;
@@ -258,11 +259,15 @@ class _SuperEditorState extends State<SuperEditor> {
   late SingleColumnLayoutSelectionStyler _docLayoutSelectionStyler;
 
   late FocusNode _focusNode;
+  @visibleForTesting
+  FocusNode get focusNode => _focusNode;
+
   late DocumentComposer _composer;
 
   DocumentPosition? _previousSelectionExtent;
 
-  late EditContext _editContext;
+  @visibleForTesting
+  late EditContext editContext;
   late SoftwareKeyboardHandler _softwareKeyboardHandler;
   final _floatingCursorController = FloatingCursorController();
 
@@ -282,9 +287,9 @@ class _SuperEditorState extends State<SuperEditor> {
 
     _softwareKeyboardHandler = widget.softwareKeyboardHandler ??
         SoftwareKeyboardHandler(
-          editor: _editContext.editor,
-          composer: _editContext.composer,
-          commonOps: _editContext.commonOps,
+          editor: editContext.editor,
+          composer: editContext.composer,
+          commonOps: editContext.commonOps,
         );
   }
 
@@ -312,9 +317,9 @@ class _SuperEditorState extends State<SuperEditor> {
     if (widget.softwareKeyboardHandler != oldWidget.softwareKeyboardHandler) {
       _softwareKeyboardHandler = widget.softwareKeyboardHandler ??
           SoftwareKeyboardHandler(
-            editor: _editContext.editor,
-            composer: _editContext.composer,
-            commonOps: _editContext.commonOps,
+            editor: editContext.editor,
+            composer: editContext.composer,
+            commonOps: editContext.commonOps,
           );
     }
 
@@ -346,7 +351,7 @@ class _SuperEditorState extends State<SuperEditor> {
   }
 
   void _createEditContext() {
-    _editContext = EditContext(
+    editContext = EditContext(
       editor: widget.editor,
       composer: _composer,
       getDocumentLayout: () => _docLayoutKey.currentState as DocumentLayout,
@@ -364,7 +369,7 @@ class _SuperEditorState extends State<SuperEditor> {
       _docLayoutPresenter!.dispose();
     }
 
-    final document = _editContext.editor.document;
+    final document = editContext.editor.document;
 
     _docStylesheetStyler = SingleColumnStylesheetStyler(stylesheet: widget.stylesheet);
 
@@ -372,7 +377,7 @@ class _SuperEditorState extends State<SuperEditor> {
 
     _docLayoutSelectionStyler = SingleColumnLayoutSelectionStyler(
       document: document,
-      composer: _editContext.composer,
+      composer: editContext.composer,
       selectionStyles: widget.selectionStyles,
     );
 
@@ -474,7 +479,7 @@ class _SuperEditorState extends State<SuperEditor> {
         return DocumentKeyboardInteractor(
           focusNode: _focusNode,
           autofocus: widget.autofocus,
-          editContext: _editContext,
+          editContext: editContext,
           keyboardActions: widget.keyboardActions,
           child: child,
         );
@@ -482,8 +487,9 @@ class _SuperEditorState extends State<SuperEditor> {
         return DocumentImeInteractor(
           focusNode: _focusNode,
           autofocus: widget.autofocus,
-          editContext: _editContext,
+          editContext: editContext,
           softwareKeyboardHandler: _softwareKeyboardHandler,
+          hardwareKeyboardActions: widget.keyboardActions,
           floatingCursorController: _floatingCursorController,
           child: child,
         );
@@ -500,7 +506,7 @@ class _SuperEditorState extends State<SuperEditor> {
       case DocumentGestureMode.mouse:
         return DocumentMouseInteractor(
           focusNode: _focusNode,
-          editContext: _editContext,
+          editContext: editContext,
           scrollController: widget.scrollController,
           showDebugPaint: widget.debugPaint.gestures,
           scrollingMinimapId: widget.debugPaint.scrollingMinimapId,
@@ -509,9 +515,9 @@ class _SuperEditorState extends State<SuperEditor> {
       case DocumentGestureMode.android:
         return AndroidDocumentTouchInteractor(
           focusNode: _focusNode,
-          composer: _editContext.composer,
-          document: _editContext.editor.document,
-          getDocumentLayout: () => _editContext.documentLayout,
+          composer: editContext.composer,
+          document: editContext.editor.document,
+          getDocumentLayout: () => editContext.documentLayout,
           scrollController: widget.scrollController,
           documentKey: _docLayoutKey,
           popoverToolbarBuilder: widget.androidToolbarBuilder ?? (_) => const SizedBox(),
@@ -522,9 +528,9 @@ class _SuperEditorState extends State<SuperEditor> {
       case DocumentGestureMode.iOS:
         return IOSDocumentTouchInteractor(
           focusNode: _focusNode,
-          composer: _editContext.composer,
-          document: _editContext.editor.document,
-          getDocumentLayout: () => _editContext.documentLayout,
+          composer: editContext.composer,
+          document: editContext.editor.document,
+          getDocumentLayout: () => editContext.documentLayout,
           scrollController: widget.scrollController,
           documentKey: _docLayoutKey,
           popoverToolbarBuilder: widget.iOSToolbarBuilder ?? (_) => const SizedBox(),
@@ -583,6 +589,7 @@ final defaultKeyboardActions = <DocumentKeyboardAction>[
   pasteWhenCmdVIsPressed,
   copyWhenCmdCIsPressed,
   cutWhenCmdXIsPressed,
+  collapseSelectionWhenEscIsPressed,
   selectAllWhenCmdAIsPressed,
   moveUpDownLeftAndRightWithArrowKeys,
   tabToIndentListItem,
@@ -601,6 +608,29 @@ final defaultKeyboardActions = <DocumentKeyboardAction>[
   anyCharacterOrDestructiveKeyToDeleteSelection,
   anyCharacterToInsertInParagraph,
   anyCharacterToInsertInTextContent,
+];
+
+/// Keyboard actions for a [SuperEditor] running with IME on
+/// desktop.
+///
+/// Using the IME on desktop involves partial input from the IME
+/// and partial input from non-content keys, like arrow keys.
+final defaultImeKeyboardActions = <DocumentKeyboardAction>[
+  doNothingWhenThereIsNoSelection,
+  pasteWhenCmdVIsPressed,
+  copyWhenCmdCIsPressed,
+  cutWhenCmdXIsPressed,
+  selectAllWhenCmdAIsPressed,
+  moveUpDownLeftAndRightWithArrowKeys,
+  tabToIndentListItem,
+  shiftTabToUnIndentListItem,
+  backspaceToUnIndentListItem,
+  backspaceToClearParagraphBlockType,
+  cmdBToToggleBold,
+  cmdIToToggleItalics,
+  shiftEnterToInsertNewlineInBlock,
+  backspaceToRemoveUpstreamContent,
+  deleteToRemoveDownstreamContent,
 ];
 
 /// Stylesheet applied to all [SuperEditor]s by default.
@@ -696,6 +726,19 @@ final defaultStylesheet = Stylesheet(
       (doc, docNode) {
         return {
           "padding": const CascadingPadding.only(top: 24),
+        };
+      },
+    ),
+    StyleRule(
+      const BlockSelector("blockquote"),
+      (doc, docNode) {
+        return {
+          "textStyle": const TextStyle(
+            color: Colors.grey,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            height: 1.4,
+          ),
         };
       },
     ),

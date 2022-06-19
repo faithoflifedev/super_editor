@@ -1,10 +1,11 @@
+<p align="center">
+  <img src="https://user-images.githubusercontent.com/7259036/170845431-e83699df-5c6c-4e9c-90fc-c12277cc2f48.png" width="300" alt="Super Editor"><br>
+  <span><b>Open source, configurable, extensible text editor and document renderer for Flutter.</b></span><br><br>
+</p>
+
 <img src="https://raw.githubusercontent.com/superlistapp/super_editor/main/super_editor/doc/marketing/readme-header.png" width="100%" alt="Super Editor">
 
-# Super Editor
-
-Super Editor is an open source, configurable, extensible text editor and document renderer for Flutter apps.
-
-`super_editor` was initiated by [Superlist](https://superlist.com) and is being implemented and maintained by [SuperDeclarative!](https://superdeclarative.com), Superlist, and the contributors.
+`super_editor` was initiated by [Superlist](https://superlist.com) and is being implemented and maintained by the [Flutter Bounty Hunters](https://flutterbountyhunters.com), Superlist, and the contributors.
 
 ## Supported Platforms
 
@@ -101,10 +102,30 @@ class _MyAppState extends State<MyApp> {
     void build(context) {
         return SuperEditor.custom(
             editor: _myDocumentEditor,
-            textStyleBuilder: /** INSERT CUSTOMIZATION **/ null,
             selectionStyle: /** INSERT CUSTOMIZATION **/ null,
-            keyboardActions: /** INSERT CUSTOMIZATION **/ null,
-            componentBuilders: /** INSERT CUSTOMIZATION **/ null,
+            stylesheet: defaultStylesheet.copyWith(
+                addRulesAfter: [
+                    // Add any custom document styles, for example, you might
+                    // apply styles to a custom Task node type.
+                    StyleRule(
+                        const BlockSelector("task"),
+                        (document, node) {
+                            if (node is! TaskNode) {
+                                return {};
+                            }
+
+                            return {
+                                "padding": const CascadingPadding.only(top: 24),
+                            };
+                        },
+                    )
+                ],
+            ),
+            componentBuilders: [
+              ...defaultComponentBuilders,
+              // Add any of your own custom builders for document
+              // components, e.g., paragraphs, images, list items.
+            ],
         );
     }
 }
@@ -113,7 +134,3 @@ class _MyAppState extends State<MyApp> {
 If your app requires deeper customization than `SuperEditor` provides, you can construct your own version of the `SuperEditor` widget by using lower level tools within the `super_editor` package.
 
 See the wiki for more information about how to customize an editor experience.
-
-## Display a document renderer
-
-TODO: implement static document rendering

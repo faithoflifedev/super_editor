@@ -1,12 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:super_editor/src/infrastructure/_listenable_builder.dart';
+import 'package:super_editor/src/infrastructure/attributed_text_styles.dart';
 import 'package:super_editor/src/infrastructure/super_textfield/android/_editing_controls.dart';
 import 'package:super_editor/src/infrastructure/super_textfield/android/_user_interaction.dart';
-import 'package:super_editor/super_editor.dart';
+import 'package:super_editor/src/infrastructure/super_textfield/infrastructure/hint_text.dart';
+import 'package:super_editor/src/infrastructure/super_textfield/infrastructure/text_scrollview.dart';
+import 'package:super_editor/src/infrastructure/super_textfield/input_method_engine/_ime_text_editing_controller.dart';
+import 'package:super_text_layout/super_text_layout.dart';
 
-export '_caret.dart';
+import '../../_logging.dart';
+import '../styles.dart';
+import 'android_textfield.dart';
+
 export '../../platforms/android/selection_handles.dart';
 export '../../platforms/android/toolbar.dart';
+export '_caret.dart';
 
 final _log = androidTextFieldLog;
 
@@ -16,7 +25,7 @@ class SuperAndroidTextField extends StatefulWidget {
     this.focusNode,
     this.textController,
     this.textAlign = TextAlign.left,
-    this.textStyleBuilder = defaultStyleBuilder,
+    this.textStyleBuilder = defaultTextFieldStyleBuilder,
     this.hintBehavior = HintBehavior.displayHintUntilFocus,
     this.hintBuilder,
     this.minLines,
@@ -119,15 +128,17 @@ class SuperAndroidTextField extends StatefulWidget {
   final Widget Function(BuildContext, AndroidEditingOverlayController) popoverToolbarBuilder;
 
   @override
-  _SuperAndroidTextFieldState createState() => _SuperAndroidTextFieldState();
+  State createState() => SuperAndroidTextFieldState();
 }
 
-class _SuperAndroidTextFieldState extends State<SuperAndroidTextField> with SingleTickerProviderStateMixin {
+class SuperAndroidTextFieldState extends State<SuperAndroidTextField>
+    with SingleTickerProviderStateMixin
+    implements ProseTextBlock {
   final _textFieldKey = GlobalKey();
   final _textFieldLayerLink = LayerLink();
   final _textContentLayerLink = LayerLink();
   final _scrollKey = GlobalKey<AndroidTextFieldTouchInteractorState>();
-  final _textContentKey = GlobalKey<SuperSelectableTextState>();
+  final _textContentKey = GlobalKey<ProseTextState>();
 
   late FocusNode _focusNode;
 
@@ -250,6 +261,9 @@ class _SuperAndroidTextFieldState extends State<SuperAndroidTextField> with Sing
     super.dispose();
   }
 
+  @override
+  ProseTextLayout get textLayout => _textContentKey.currentState!.textLayout;
+
   bool get _isMultiline => widget.minLines != 1 || widget.maxLines != 1;
 
   void _onFocusChange() {
@@ -332,7 +346,7 @@ class _SuperAndroidTextFieldState extends State<SuperAndroidTextField> with Sing
         link: _textFieldLayerLink,
         child: AndroidTextFieldTouchInteractor(
           focusNode: _focusNode,
-          selectableTextKey: _textContentKey,
+          textKey: _textContentKey,
           textFieldLayerLink: _textFieldLayerLink,
           textController: _textEditingController,
           editingOverlayController: _editingOverlayController,
@@ -382,23 +396,19 @@ class _SuperAndroidTextFieldState extends State<SuperAndroidTextField> with Sing
         ? _textEditingController.text.computeTextSpan(widget.textStyleBuilder)
         : TextSpan(text: "", style: widget.textStyleBuilder({}));
 
-    final emptyTextCaretHeight =
-        (widget.textStyleBuilder({}).fontSize ?? 0.0) * (widget.textStyleBuilder({}).height ?? 1.0);
-
-    // TODO: switch out textSelectionDecoration and textCaretFactory
-    //       for backgroundBuilders and foregroundBuilders, respectively
-    //
-    //       add the floating cursor as a foreground builder
-    return SuperSelectableText(
+    return SuperTextWithSelection.single(
       key: _textContentKey,
-      textSpan: textSpan,
+      richText: textSpan,
       textAlign: widget.textAlign,
-      textSelection: _textEditingController.selection,
-      textSelectionDecoration: TextSelectionDecoration(selectionColor: widget.selectionColor),
-      showCaret: true,
-      textCaretFactory: AndroidTextCaretFactory(
-        color: widget.caretColor,
-        emptyTextCaretHeight: emptyTextCaretHeight,
+      userSelection: UserSelection(
+        highlightStyle: SelectionHighlightStyle(
+          color: widget.selectionColor,
+        ),
+        caretStyle: CaretStyle(
+          color: widget.caretColor,
+        ),
+        selection: _textEditingController.selection,
+        hasCaret: true,
       ),
     );
   }
