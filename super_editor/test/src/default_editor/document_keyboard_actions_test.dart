@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_test_robots/flutter_test_robots.dart';
 import 'package:super_editor/src/infrastructure/platform_detector.dart';
 import 'package:super_editor/super_editor.dart';
 
 import '../_document_test_tools.dart';
 import '../_text_entry_test_tools.dart';
 import '../infrastructure/_platform_test_tools.dart';
-import 'test_documents.dart';
+import '../../super_editor/test_documents.dart';
 
 void main() {
   group(
@@ -21,7 +22,7 @@ void main() {
           // line in the first node.
           final editContext = await _pumpCaretMovementTestSetup(tester, textOffsetInFirstNode: 8);
 
-          await tester.pressCmdLeftArrow(tester);
+          await tester.pressCmdLeftArrow();
 
           // Ensure that the caret moved to the beginning of the line.
           expect(
@@ -44,7 +45,7 @@ void main() {
           // in the first node.
           final editContext = await _pumpCaretMovementTestSetup(tester, textOffsetInFirstNode: 8);
 
-          await tester.pressCmdRightArrow(tester);
+          await tester.pressCmdRightArrow();
 
           // Ensure that the caret moved to the end of the line. This value
           // is very fragile. If the text size or layout width changes, this value
@@ -68,7 +69,7 @@ void main() {
           // Start the user's selection somewhere in the middle of a word.
           final editContext = await _pumpCaretMovementTestSetup(tester, textOffsetInFirstNode: 8);
 
-          await tester.pressAltLeftArrow(tester);
+          await tester.pressAltLeftArrow();
 
           // Ensure that the caret moved to the beginning of the word.
           expect(
@@ -90,7 +91,7 @@ void main() {
           // Start the user's selection somewhere in the middle of a word.
           final editContext = await _pumpCaretMovementTestSetup(tester, textOffsetInFirstNode: 8);
 
-          await tester.pressAltRightArrow(tester);
+          await tester.pressAltRightArrow();
 
           // Ensure that the caret moved to the beginning of the word.
           expect(
@@ -115,9 +116,9 @@ void main() {
             () {
               Platform.setTestInstance(MacPlatform());
 
-              final _editContext = createEditContext(document: MutableDocument());
+              final editContext = createEditContext(document: MutableDocument());
               var result = selectAllWhenCmdAIsPressed(
-                editContext: _editContext,
+                editContext: editContext,
                 keyEvent: const FakeRawKeyEvent(
                   data: FakeRawKeyEventData(
                     logicalKey: LogicalKeyboardKey.keyC,
@@ -141,9 +142,9 @@ void main() {
             () {
               Platform.setTestInstance(MacPlatform());
 
-              final _editContext = createEditContext(document: MutableDocument());
+              final editContext = createEditContext(document: MutableDocument());
               var result = selectAllWhenCmdAIsPressed(
-                editContext: _editContext,
+                editContext: editContext,
                 keyEvent: const FakeRawKeyEvent(
                   data: FakeRawKeyEventData(
                     logicalKey: LogicalKeyboardKey.keyA,
@@ -167,9 +168,9 @@ void main() {
             () {
               Platform.setTestInstance(MacPlatform());
 
-              final _editContext = createEditContext(document: MutableDocument());
+              final editContext = createEditContext(document: MutableDocument());
               var result = selectAllWhenCmdAIsPressed(
-                editContext: _editContext,
+                editContext: editContext,
                 keyEvent: const FakeRawKeyEvent(
                     data: FakeRawKeyEventData(
                       logicalKey: LogicalKeyboardKey.keyA,
@@ -192,7 +193,7 @@ void main() {
             () {
               Platform.setTestInstance(MacPlatform());
 
-              final _editContext = createEditContext(
+              final editContext = createEditContext(
                 document: MutableDocument(
                   nodes: [
                     ParagraphNode(
@@ -203,7 +204,7 @@ void main() {
                 ),
               );
               var result = selectAllWhenCmdAIsPressed(
-                editContext: _editContext,
+                editContext: editContext,
                 keyEvent: const FakeRawKeyEvent(
                   data: FakeRawKeyEventData(
                     logicalKey: LogicalKeyboardKey.keyA,
@@ -217,14 +218,14 @@ void main() {
 
               expect(result, ExecutionInstruction.haltExecution);
               expect(
-                _editContext.composer.selection!.base,
+                editContext.composer.selection!.base,
                 const DocumentPosition(
                   nodeId: 'paragraph',
                   nodePosition: TextNodePosition(offset: 0),
                 ),
               );
               expect(
-                _editContext.composer.selection!.extent,
+                editContext.composer.selection!.extent,
                 const DocumentPosition(
                   nodeId: 'paragraph',
                   nodePosition: TextNodePosition(offset: 'This is some text'.length),
@@ -239,7 +240,7 @@ void main() {
             () {
               Platform.setTestInstance(MacPlatform());
 
-              final _editContext = createEditContext(
+              final editContext = createEditContext(
                 document: MutableDocument(
                   nodes: [
                     ParagraphNode(
@@ -254,7 +255,7 @@ void main() {
                 ),
               );
               var result = selectAllWhenCmdAIsPressed(
-                editContext: _editContext,
+                editContext: editContext,
                 keyEvent: const FakeRawKeyEvent(
                   data: FakeRawKeyEventData(
                     logicalKey: LogicalKeyboardKey.keyA,
@@ -268,14 +269,14 @@ void main() {
 
               expect(result, ExecutionInstruction.haltExecution);
               expect(
-                _editContext.composer.selection!.base,
+                editContext.composer.selection!.base,
                 const DocumentPosition(
                   nodeId: 'paragraph_1',
                   nodePosition: TextNodePosition(offset: 0),
                 ),
               );
               expect(
-                _editContext.composer.selection!.extent,
+                editContext.composer.selection!.extent,
                 const DocumentPosition(
                   nodeId: 'paragraph_2',
                   nodePosition: TextNodePosition(offset: 'This is some text'.length),
@@ -290,7 +291,7 @@ void main() {
             () {
               Platform.setTestInstance(MacPlatform());
 
-              final _editContext = createEditContext(
+              final editContext = createEditContext(
                 document: MutableDocument(
                   nodes: [
                     ImageNode(
@@ -309,7 +310,7 @@ void main() {
                 ),
               );
               var result = selectAllWhenCmdAIsPressed(
-                editContext: _editContext,
+                editContext: editContext,
                 keyEvent: const FakeRawKeyEvent(
                   data: FakeRawKeyEventData(
                     logicalKey: LogicalKeyboardKey.keyA,
@@ -323,14 +324,14 @@ void main() {
 
               expect(result, ExecutionInstruction.haltExecution);
               expect(
-                _editContext.composer.selection!.base,
+                editContext.composer.selection!.base,
                 const DocumentPosition(
                   nodeId: 'image_1',
                   nodePosition: UpstreamDownstreamNodePosition.upstream(),
                 ),
               );
               expect(
-                _editContext.composer.selection!.extent,
+                editContext.composer.selection!.extent,
                 const DocumentPosition(
                   nodeId: 'image_2',
                   nodePosition: UpstreamDownstreamNodePosition.downstream(),
@@ -347,7 +348,7 @@ void main() {
         test('deletes selection if backspace is pressed', () {
           Platform.setTestInstance(MacPlatform());
 
-          final _editContext = createEditContext(
+          final editContext = createEditContext(
             document: MutableDocument(
               nodes: [
                 ParagraphNode(
@@ -371,7 +372,7 @@ void main() {
           );
 
           var result = anyCharacterOrDestructiveKeyToDeleteSelection(
-            editContext: _editContext,
+            editContext: editContext,
             keyEvent: const FakeRawKeyEvent(
               data: FakeRawKeyEventData(
                 logicalKey: LogicalKeyboardKey.backspace,
@@ -382,11 +383,11 @@ void main() {
 
           expect(result, ExecutionInstruction.haltExecution);
 
-          final paragraph = _editContext.editor.document.nodes.first as ParagraphNode;
+          final paragraph = editContext.editor.document.nodes.first as ParagraphNode;
           expect(paragraph.text.text, 'Text with [] selection');
 
           expect(
-            _editContext.composer.selection,
+            editContext.composer.selection,
             equals(
               const DocumentSelection.collapsed(
                 position: DocumentPosition(
@@ -403,7 +404,7 @@ void main() {
         test('deletes selection if delete is pressed', () {
           Platform.setTestInstance(MacPlatform());
 
-          final _editContext = createEditContext(
+          final editContext = createEditContext(
             document: MutableDocument(
               nodes: [
                 ParagraphNode(
@@ -427,7 +428,7 @@ void main() {
           );
 
           var result = anyCharacterOrDestructiveKeyToDeleteSelection(
-            editContext: _editContext,
+            editContext: editContext,
             keyEvent: const FakeRawKeyEvent(
               data: FakeRawKeyEventData(
                 logicalKey: LogicalKeyboardKey.delete,
@@ -438,11 +439,11 @@ void main() {
 
           expect(result, ExecutionInstruction.haltExecution);
 
-          final paragraph = _editContext.editor.document.nodes.first as ParagraphNode;
+          final paragraph = editContext.editor.document.nodes.first as ParagraphNode;
           expect(paragraph.text.text, 'Text with [] selection');
 
           expect(
-            _editContext.composer.selection,
+            editContext.composer.selection,
             equals(
               const DocumentSelection.collapsed(
                 position: DocumentPosition(
@@ -459,7 +460,7 @@ void main() {
         test('deletes selection and inserts character', () {
           Platform.setTestInstance(MacPlatform());
 
-          final _editContext = createEditContext(
+          final editContext = createEditContext(
             document: MutableDocument(
               nodes: [
                 ParagraphNode(
@@ -483,7 +484,7 @@ void main() {
           );
 
           var result = anyCharacterOrDestructiveKeyToDeleteSelection(
-            editContext: _editContext,
+            editContext: editContext,
             keyEvent: const FakeRawKeyEvent(
               data: FakeRawKeyEventData(
                 logicalKey: LogicalKeyboardKey.keyA,
@@ -495,11 +496,11 @@ void main() {
 
           expect(result, ExecutionInstruction.haltExecution);
 
-          final paragraph = _editContext.editor.document.nodes.first as ParagraphNode;
+          final paragraph = editContext.editor.document.nodes.first as ParagraphNode;
           expect(paragraph.text.text, 'Text with [a] selection');
 
           expect(
-            _editContext.composer.selection,
+            editContext.composer.selection,
             equals(
               const DocumentSelection.collapsed(
                 position: DocumentPosition(
@@ -512,6 +513,118 @@ void main() {
 
           Platform.setTestInstance(null);
         });
+
+        test('collapses selection if escape is pressed', () {
+          Platform.setTestInstance(MacPlatform());
+
+          final editContext = createEditContext(
+            document: MutableDocument(
+              nodes: [
+                ParagraphNode(
+                  id: '1',
+                  text: AttributedText(text: 'Text with [SELECTME] selection'),
+                ),
+              ],
+            ),
+            documentComposer: DocumentComposer(
+              initialSelection: const DocumentSelection(
+                base: DocumentPosition(
+                  nodeId: '1',
+                  nodePosition: TextNodePosition(offset: 11),
+                ),
+                extent: DocumentPosition(
+                  nodeId: '1',
+                  nodePosition: TextNodePosition(offset: 19),
+                ),
+              ),
+            ),
+          );
+
+          final result = collapseSelectionWhenEscIsPressed(
+            editContext: editContext,
+            keyEvent: const FakeRawKeyEvent(
+              data: FakeRawKeyEventData(
+                logicalKey: LogicalKeyboardKey.escape,
+                physicalKey: PhysicalKeyboardKey.escape,
+              ),
+            ),
+          );
+
+          expect(result, ExecutionInstruction.haltExecution);
+
+          // The text should remain the same
+          final paragraph = editContext.editor.document.nodes.first as ParagraphNode;
+          expect(paragraph.text.text, 'Text with [SELECTME] selection');
+
+          // The selection should be collapsed
+          expect(
+            editContext.composer.selection,
+            equals(
+              const DocumentSelection.collapsed(
+                position: DocumentPosition(
+                  nodeId: '1',
+                  nodePosition: TextNodePosition(offset: 19),
+                ),
+              ),
+            ),
+          );
+
+          Platform.setTestInstance(null);
+        });
+      });
+      test('does nothing when escape is pressed if the selection is collapsed', () {
+        Platform.setTestInstance(MacPlatform());
+
+        final editContext = createEditContext(
+          document: MutableDocument(
+            nodes: [
+              ParagraphNode(
+                id: '1',
+                text: AttributedText(text: 'This is some text'),
+              ),
+            ],
+          ),
+          documentComposer: DocumentComposer(
+            initialSelection: const DocumentSelection.collapsed(
+              position: DocumentPosition(
+                nodeId: '1',
+                nodePosition: TextNodePosition(offset: 8),
+              ),
+            ),
+          ),
+        );
+
+        final result = collapseSelectionWhenEscIsPressed(
+          editContext: editContext,
+          keyEvent: const FakeRawKeyEvent(
+            data: FakeRawKeyEventData(
+              logicalKey: LogicalKeyboardKey.escape,
+              physicalKey: PhysicalKeyboardKey.escape,
+            ),
+          ),
+        );
+
+        // The handler should pass on do nothing when there is no selection.
+        expect(result, ExecutionInstruction.continueExecution);
+
+        // The text should remain the same
+        final paragraph = editContext.editor.document.nodes.first as ParagraphNode;
+        expect(paragraph.text.text, 'This is some text');
+
+        // The selection should remain the same
+        expect(
+          editContext.composer.selection,
+          equals(
+            const DocumentSelection.collapsed(
+              position: DocumentPosition(
+                nodeId: '1',
+                nodePosition: TextNodePosition(offset: 8),
+              ),
+            ),
+          ),
+        );
+
+        Platform.setTestInstance(null);
       });
     },
   );

@@ -17,7 +17,7 @@ import 'package:super_editor/src/infrastructure/composable_text.dart';
 import 'package:super_editor/src/infrastructure/keyboard.dart';
 import 'package:super_editor/src/infrastructure/raw_key_event_extensions.dart';
 import 'package:super_editor/src/infrastructure/strings.dart';
-import 'package:super_text/super_selectable_text.dart';
+import 'package:super_text_layout/super_text_layout.dart';
 
 import 'document_input_keyboard.dart';
 import 'layout_single_column/layout_single_column.dart';
@@ -334,7 +334,7 @@ class TextWithHintComponent extends StatefulWidget {
 
 class _TextWithHintComponentState extends State<TextWithHintComponent>
     with ProxyDocumentComponent<TextWithHintComponent>, ProxyTextComposable {
-  final _childTextComponentKey = GlobalKey<_TextComponentState>();
+  final _childTextComponentKey = GlobalKey<TextComponentState>();
 
   @override
   DocumentComponent<StatefulWidget> get childDocumentComponentKey => _childTextComponentKey.currentState!;
@@ -413,19 +413,28 @@ class TextComponent extends StatefulWidget {
   final bool showDebugPaint;
 
   @override
-  _TextComponentState createState() => _TextComponentState();
+  TextComponentState createState() => TextComponentState();
 }
 
-class _TextComponentState extends State<TextComponent> with DocumentComponent implements TextComposable {
-  final _selectableTextKey = GlobalKey<SuperSelectableTextState>();
+@visibleForTesting
+class TextComponentState extends State<TextComponent> with DocumentComponent implements TextComposable {
+  final _textKey = GlobalKey<ProseTextState>();
+
+  @visibleForTesting
+  ProseTextLayout get textLayout => _textKey.currentState!.textLayout;
 
   @override
   TextNodePosition? getPositionAtOffset(Offset localOffset) {
-    final textLayout = _selectableTextKey.currentState;
-    final textPosition = textLayout?.getPositionAtOffset(localOffset);
-    if (textPosition == null) {
-      return null;
-    }
+    // TODO: Change this implementation to use exact position instead of nearest position
+    //       After extracting super_text, looking up the exact offset broke the
+    //       ability to tap into empty TextWithHintComponents. To fix this, we
+    //       switched to the nearest position. Add a different version of this
+    //       API for nearest position and then let clients pick the one that's
+    //       right for them.
+    final textPosition = textLayout.getPositionNearestToOffset(localOffset);
+    // if (textPosition == null) {
+    //   return null;
+    // }
 
     // Rework the textPosition so that it reports a "downstream" affinity because
     // the editor doesn't support "upstream" positions, yet.
@@ -449,7 +458,7 @@ class _TextComponentState extends State<TextComponent> with DocumentComponent im
     if (nodePosition is! TextPosition) {
       throw Exception('Expected nodePosition of type TextPosition but received: $nodePosition');
     }
-    return _selectableTextKey.currentState!.getOffsetAtPosition(nodePosition);
+    return textLayout.getOffsetAtPosition(nodePosition);
   }
 
   @override
@@ -459,8 +468,7 @@ class _TextComponentState extends State<TextComponent> with DocumentComponent im
     }
 
     final offset = getOffsetForPosition(nodePosition);
-    final lineHeight = _selectableTextKey.currentState!.getHeightForCaret(nodePosition) ??
-        _selectableTextKey.currentState!.getLineHeightAtPosition(nodePosition);
+    final lineHeight = textLayout.getHeightForCaret(nodePosition) ?? textLayout.getLineHeightAtPosition(nodePosition);
     return Rect.fromLTWH(offset.dx, offset.dy, 0, lineHeight);
   }
 
@@ -477,7 +485,7 @@ class _TextComponentState extends State<TextComponent> with DocumentComponent im
       baseOffset: baseNodePosition.offset,
       extentOffset: extentNodePosition.offset,
     );
-    final boxes = _selectableTextKey.currentState!.getBoxesForSelection(selection);
+    final boxes = textLayout.getBoxesForSelection(selection);
 
     Rect boundingBox = boxes.isNotEmpty ? boxes.first.toRect() : Rect.zero;
     for (int i = 1; i < boxes.length; ++i) {
@@ -495,7 +503,7 @@ class _TextComponentState extends State<TextComponent> with DocumentComponent im
   @override
   TextNodePosition getBeginningPositionNearX(double x) {
     return TextNodePosition.fromTextPosition(
-      _selectableTextKey.currentState!.getPositionInFirstLineAtX(x),
+      textLayout.getPositionInFirstLineAtX(x),
     );
   }
 
@@ -636,13 +644,12 @@ class _TextComponentState extends State<TextComponent> with DocumentComponent im
 
   @override
   TextNodePosition getEndPositionNearX(double x) {
-    return TextNodePosition.fromTextPosition(_selectableTextKey.currentState!.getPositionInLastLineAtX(x));
+    return TextNodePosition.fromTextPosition(textLayout.getPositionInLastLineAtX(x));
   }
 
   @override
   TextNodeSelection getSelectionInRange(Offset localBaseOffset, Offset localExtentOffset) {
-    return TextNodeSelection.fromTextSelection(
-        _selectableTextKey.currentState!.getSelectionInRect(localBaseOffset, localExtentOffset));
+    return TextNodeSelection.fromTextSelection(textLayout.getSelectionInRect(localBaseOffset, localExtentOffset));
   }
 
   @override
@@ -682,13 +689,13 @@ class _TextComponentState extends State<TextComponent> with DocumentComponent im
 
   @override
   MouseCursor? getDesiredCursorAtOffset(Offset localOffset) {
-    return _selectableTextKey.currentState!.isTextAtOffset(localOffset) ? SystemMouseCursors.text : null;
+    return textLayout.isTextAtOffset(localOffset) ? SystemMouseCursors.text : null;
   }
 
   @override
   TextNodeSelection getWordSelectionAt(TextNodePosition textPosition) {
     return TextNodeSelection.fromTextSelection(
-      _selectableTextKey.currentState!.getWordSelectionAt(textPosition),
+      textLayout.getWordSelectionAt(textPosition),
     );
   }
 
@@ -709,7 +716,7 @@ class _TextComponentState extends State<TextComponent> with DocumentComponent im
       throw Exception('Expected position of type NodePosition but received ${textPosition.runtimeType}');
     }
 
-    final positionOneLineUp = _selectableTextKey.currentState!.getPositionOneLineUp(textPosition);
+    final positionOneLineUp = textLayout.getPositionOneLineUp(textPosition);
     if (positionOneLineUp == null) {
       return null;
     }
@@ -722,7 +729,7 @@ class _TextComponentState extends State<TextComponent> with DocumentComponent im
       throw Exception('Expected position of type NodePosition but received ${textPosition.runtimeType}');
     }
 
-    final positionOneLineDown = _selectableTextKey.currentState!.getPositionOneLineDown(textPosition);
+    final positionOneLineDown = textLayout.getPositionOneLineDown(textPosition);
     if (positionOneLineDown == null) {
       return null;
     }
@@ -732,14 +739,14 @@ class _TextComponentState extends State<TextComponent> with DocumentComponent im
   @override
   TextNodePosition getPositionAtEndOfLine(TextNodePosition textPosition) {
     return TextNodePosition.fromTextPosition(
-      _selectableTextKey.currentState!.getPositionAtEndOfLine(textPosition),
+      textLayout.getPositionAtEndOfLine(textPosition),
     );
   }
 
   @override
   TextNodePosition getPositionAtStartOfLine(TextNodePosition textNodePosition) {
     return TextNodePosition.fromTextPosition(
-      _selectableTextKey.currentState!.getPositionAtStartOfLine(textNodePosition),
+      textLayout.getPositionAtStartOfLine(textNodePosition),
     );
   }
 
@@ -747,16 +754,22 @@ class _TextComponentState extends State<TextComponent> with DocumentComponent im
   Widget build(BuildContext context) {
     editorLayoutLog.finer('Building a TextComponent with key: ${widget.key}');
 
-    return SuperSelectableText(
-      key: _selectableTextKey,
-      textSpan: widget.text.computeTextSpan(_textStyleWithBlockType),
+    return SuperTextWithSelection.single(
+      key: _textKey,
+      richText: widget.text.computeTextSpan(_textStyleWithBlockType),
       textAlign: widget.textAlign ?? TextAlign.left,
       textDirection: widget.textDirection ?? TextDirection.ltr,
-      textSelection: widget.textSelection ?? const TextSelection.collapsed(offset: -1),
-      textSelectionDecoration: TextSelectionDecoration(selectionColor: widget.selectionColor),
-      showCaret: widget.showCaret,
-      textCaretFactory: TextCaretFactory(color: widget.caretColor),
-      highlightWhenEmpty: widget.highlightWhenEmpty,
+      userSelection: UserSelection(
+        highlightStyle: SelectionHighlightStyle(
+          color: widget.selectionColor,
+        ),
+        caretStyle: CaretStyle(
+          color: widget.caretColor,
+        ),
+        selection: widget.textSelection ?? const TextSelection.collapsed(offset: -1),
+        hasCaret: widget.showCaret,
+        highlightWhenEmpty: widget.highlightWhenEmpty,
+      ),
     );
   }
 

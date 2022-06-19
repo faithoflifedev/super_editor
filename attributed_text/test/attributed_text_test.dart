@@ -27,6 +27,60 @@ void main() {
       );
     });
 
+    group('span manipulation', () {
+      test('combines overlapping spans when adding from left to right', () {
+        // Note: span overlaps at the boundary had a bug that was filed in #582.
+        final text = AttributedText(text: '01234567');
+        text.addAttribution(ExpectedSpans.bold, SpanRange(start: 0, end: 4));
+        text.addAttribution(ExpectedSpans.bold, SpanRange(start: 4, end: 8));
+
+        // Ensure that the spans were merged into a single span.
+        expect(text.spans.markers.length, 2);
+        expect(
+          text.spans.markers.first,
+          SpanMarker(attribution: ExpectedSpans.bold, offset: 0, markerType: SpanMarkerType.start),
+        );
+        expect(
+          text.spans.markers.last,
+          SpanMarker(attribution: ExpectedSpans.bold, offset: 8, markerType: SpanMarkerType.end),
+        );
+      });
+
+      test('combines overlapping spans when adding from left to right', () {
+        final text = AttributedText(text: '01234567');
+        text.addAttribution(ExpectedSpans.bold, SpanRange(start: 4, end: 8));
+        text.addAttribution(ExpectedSpans.bold, SpanRange(start: 0, end: 4));
+
+        // Ensure that the spans were merged into a single span.
+        expect(text.spans.markers.length, 2);
+        expect(
+          text.spans.markers.first,
+          SpanMarker(attribution: ExpectedSpans.bold, offset: 0, markerType: SpanMarkerType.start),
+        );
+        expect(
+          text.spans.markers.last,
+          SpanMarker(attribution: ExpectedSpans.bold, offset: 8, markerType: SpanMarkerType.end),
+        );
+      });
+
+      test('combines back-to-back spans after addition', () {
+        final text = AttributedText(text: 'ABCD');
+        text.addAttribution(ExpectedSpans.bold, const SpanRange(start: 0, end: 1));
+        text.addAttribution(ExpectedSpans.bold, const SpanRange(start: 2, end: 3));
+
+        // Ensure that we only have a single span
+        expect(text.spans.markers.length, 2);
+        expect(
+          text.spans.markers.first,
+          SpanMarker(attribution: ExpectedSpans.bold, offset: 0, markerType: SpanMarkerType.start),
+        );
+        expect(
+          text.spans.markers.last,
+          SpanMarker(attribution: ExpectedSpans.bold, offset: 3, markerType: SpanMarkerType.end),
+        );
+      });
+    });
+
     test('notifies listeners when style changes', () {
       bool listenerCalled = false;
 
