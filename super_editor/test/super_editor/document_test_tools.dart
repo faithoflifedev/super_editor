@@ -1,9 +1,11 @@
 import 'dart:math';
+import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:super_editor/super_editor.dart';
+import 'package:super_editor_markdown/super_editor_markdown.dart';
 import 'package:text_table/text_table.dart';
 
 import 'test_documents.dart';
@@ -42,6 +44,15 @@ class TestDocumentSelector {
     return TestDocumentConfigurator._(_widgetTester, document);
   }
 
+  /// Configures the editor with a [Document] that's parsed from the
+  /// given [markdown].
+  TestDocumentConfigurator fromMarkdown(String markdown) {
+    return TestDocumentConfigurator._(
+      _widgetTester,
+      deserializeMarkdownToDocument(markdown),
+    );
+  }
+
   TestDocumentConfigurator withSingleEmptyParagraph() {
     return TestDocumentConfigurator._(
       _widgetTester,
@@ -77,6 +88,7 @@ class TestDocumentConfigurator {
   DocumentInputSource? _inputSource;
   Stylesheet? _stylesheet;
   bool _autoFocus = false;
+  ui.Size? _editorSize;
 
   /// Configures the [SuperEditor] for standard desktop interactions,
   /// e.g., mouse and keyboard input.
@@ -113,6 +125,12 @@ class TestDocumentConfigurator {
   /// Configures the [SuperEditor] to use the given [gestureMode].
   TestDocumentConfigurator withGestureMode(DocumentGestureMode gestureMode) {
     _gestureMode = gestureMode;
+    return this;
+  }
+
+  /// Configures the [SuperEditor] to constrain its maxHeight and maxWidth using the given [size].
+  TestDocumentConfigurator withEditorSize(ui.Size? size) {
+    _editorSize = size;
     return this;
   }
 
@@ -196,19 +214,34 @@ class TestDocumentConfigurator {
 
     await _widgetTester.pumpWidget(MaterialApp(
       home: Scaffold(
-        body: SuperEditor(
-          documentLayoutKey: testDocumentContext.layoutKey,
-          editor: testDocumentContext.editContext.editor,
-          focusNode: testDocumentContext.focusNode,
-          inputSource: _inputSource ?? _defaultInputSource,
-          gestureMode: _gestureMode ?? _defaultGestureMode,
-          stylesheet: _stylesheet,
-          autofocus: _autoFocus,
+        body: _buildContent(
+          SuperEditor(
+            documentLayoutKey: testDocumentContext.layoutKey,
+            editor: testDocumentContext.editContext.editor,
+            focusNode: testDocumentContext.focusNode,
+            inputSource: _inputSource ?? _defaultInputSource,
+            gestureMode: _gestureMode ?? _defaultGestureMode,
+            stylesheet: _stylesheet,
+            autofocus: _autoFocus,
+          ),
         ),
       ),
     ));
 
     return testDocumentContext;
+  }
+
+  Widget _buildContent(Widget superEditor) {
+    if (_editorSize != null) {
+      return ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: _editorSize!.width,
+          maxHeight: _editorSize!.height,
+        ),
+        child: superEditor,
+      );
+    }
+    return superEditor;
   }
 }
 
@@ -222,6 +255,71 @@ class TestDocumentContext {
   final FocusNode focusNode;
   final GlobalKey layoutKey;
   final EditContext editContext;
+}
+
+Matcher equalsMarkdown(String markdown) => DocumentEqualsMarkdownMatcher(markdown);
+
+class DocumentEqualsMarkdownMatcher extends Matcher {
+  const DocumentEqualsMarkdownMatcher(this._expectedMarkdown);
+
+  final String _expectedMarkdown;
+
+  @override
+  Description describe(Description description) {
+    return description.add("given Document has equivalent content to the given markdown");
+  }
+
+  @override
+  bool matches(covariant Object target, Map<dynamic, dynamic> matchState) {
+    return _calculateMismatchReason(target, matchState) == null;
+  }
+
+  @override
+  Description describeMismatch(
+    covariant Object target,
+    Description mismatchDescription,
+    Map matchState,
+    bool verbose,
+  ) {
+    final mismatchReason = _calculateMismatchReason(target, matchState);
+    if (mismatchReason != null) {
+      mismatchDescription.add(mismatchReason);
+    }
+    return mismatchDescription;
+  }
+
+  String? _calculateMismatchReason(
+    Object target,
+    Map<dynamic, dynamic> matchState,
+  ) {
+    late Document actualDocument;
+    if (target is Document) {
+      actualDocument = target;
+    } else {
+      // If we weren't given a Document, then we expect to receive a Finder
+      // that locates a SuperEditor, which contains a Document.
+      if (target is! Finder) {
+        return "the given target isn't a Document or a Finder: $target";
+      }
+
+      final document = SuperEditorInspector.findDocument(target);
+      if (document == null) {
+        return "Finder didn't match any SuperEditor widgets: $Finder";
+      }
+      actualDocument = document;
+    }
+
+    final actualMarkdown = serializeDocumentToMarkdown(actualDocument);
+    final stringMatcher = equals(_expectedMarkdown);
+    final matcherState = {};
+    final matches = stringMatcher.matches(actualMarkdown, matcherState);
+    if (matches) {
+      // The document matches the markdown. Our matcher matches.
+      return null;
+    }
+
+    return stringMatcher.describeMismatch(actualMarkdown, StringDescription(), matchState, false).toString();
+  }
 }
 
 Matcher documentEquivalentTo(Document expectedDocument) => EquivalentDocumentMatcher(expectedDocument);
